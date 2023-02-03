@@ -7,6 +7,7 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Wildcard;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
@@ -36,6 +37,17 @@ public class ThreadRepositoryQueryImpl implements ThreadRepositoryQuery {
             .forEach(comment -> Hibernate.initialize(comment.getEmotions())));
 
     return PageableExecutionUtils.getPage(threads, pageable, () -> totalSize);
+  }
+
+  @Override
+  public List<Thread> search(Long userId) {
+    return jpaQueryFactory.select(thread)
+        .from(thread)
+        .leftJoin(thread.channel).fetchJoin()
+        .leftJoin(thread.emotions).fetchJoin()
+        .where(userIdEq(userId))
+        .orderBy(thread.emotions.any().createdAt.desc())
+        .fetch();
   }
 
   private <T> JPAQuery<T> query(Expression<T> expr, ThreadSearchCond cond) {
@@ -68,5 +80,9 @@ public class ThreadRepositoryQueryImpl implements ThreadRepositoryQuery {
   private BooleanExpression mentionedUserIdEq(Long mentionedUserId) {
     return Objects.nonNull(mentionedUserId) ? thread.mentions.any().user.id.eq(mentionedUserId)
         : null;
+  }
+
+  private BooleanExpression userIdEq(Long userId) {
+    return Objects.nonNull(userId) ? thread.user.id.eq(userId) : null;
   }
 }
