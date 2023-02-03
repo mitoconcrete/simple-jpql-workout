@@ -45,9 +45,14 @@ public class Thread extends Timestamp {
   /**
    * 생성자 - 약속된 형태로만 생성가능하도록 합니다.
    */
+//  @Builder
+//  public Thread(String message) {
+//    this.message = message;
+//  }
   @Builder
-  public Thread(String message) {
+  public Thread(String message, User user) {
     this.message = message;
+    this.user = user;
   }
 
 
