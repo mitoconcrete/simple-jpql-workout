@@ -8,8 +8,10 @@ import me.whitebear.jpa.comment.Comment;
 import me.whitebear.jpa.comment.CommentRepository;
 import me.whitebear.jpa.common.PageDTO;
 import me.whitebear.jpa.mention.ThreadMention;
+import me.whitebear.jpa.mentionEmotion.MentionEmotionService;
 import me.whitebear.jpa.user.User;
 import me.whitebear.jpa.user.UserRepository;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +32,12 @@ class ThreadServiceImplTest {
 
   @Autowired
   CommentRepository commentRepository;
+
+  @Autowired
+  private ThreadRepository threadRepository;
+
+  @Autowired
+  MentionEmotionService mentionEmotionService;
 
   @Test
   void getMentionedThreadList() {
@@ -78,9 +86,9 @@ class ThreadServiceImplTest {
     var user4 = getTestUser("3", "4");
     var newChannel = Channel.builder().name("c1").type(Type.PUBLIC).build();
     var savedChannel = channelRepository.save(newChannel);
-    var thread2 = getTestThread("", savedChannel, user
+    var thread2 = getTestThreadWithComment("", savedChannel, user
         , user2, "e2", user3, "c2", user4, "ce2");
-    var thread1 = getTestThread("message", savedChannel, user
+    var thread1 = getTestThreadWithComment("message", savedChannel, user
         , user2, "e1", user3, "c1", user4, "ce1");
 
     // when
@@ -89,6 +97,113 @@ class ThreadServiceImplTest {
 
     // then
     assert mentionedThreadList.getTotalElements() == 2;
+  }
+
+  @Test
+  @DisplayName("전체 채널에 내가 작성한 쓰레드 그리고 댓글 중 이모지가 달려있는 쓰레드/댓글 상세정보 목록1 : 스레드 1(이모지o), 댓글 1(이모지o)이 존재할 때 스레드와 댓글의 데이터를 가져옵니다.")
+  void getEmojiAttachedThreadAndCommentsTest1() {
+    // given
+    var user = getTestUser("1", "1");
+    var user2 = getTestUser("2", "2");
+
+    var publicChannel = Channel.builder().name("c1").type(Type.PUBLIC).build();
+    var savedPublicChannel = channelRepository.save(publicChannel);
+
+    var publicThread = Thread.builder().message("message").user(user).build();
+    publicThread.setChannel(savedPublicChannel);
+    publicThread.addEmotion(user2, "emoji");
+    publicThread.addEmotion(user2, "emoji1");
+
+    var comment = Comment.builder().message("thread comment").build();
+    comment.setUser(user);
+    comment.addEmotion(user2, "emoji");
+    comment.addEmotion(user2, "emoji2");
+    var savedComment = commentRepository.save(comment);
+    publicThread.addComment(savedComment);
+    channelRepository.save(savedPublicChannel);
+
+    // when
+    var list = mentionEmotionService.search(user.getId());
+    // then
+    Assertions.assertEquals(list.size(), 2);
+    Assertions.assertEquals(list.get(0).getMessage(), publicThread.getMessage());
+    Assertions.assertEquals(list.get(1).getMessage(), savedComment.getMessage());
+  }
+
+  @Test
+  @DisplayName("전체 채널에 내가 작성한 쓰레드 그리고 댓글 중 이모지가 달려있는 쓰레드/댓글 상세정보 목록2 : 스레드 1(이모지o), 댓글 1(이모지x)이 존재할 때 스레드만 가져옵니다.")
+  void getEmojiAttachedThreadAndCommentsTest2() {
+    // given
+    var user = getTestUser("1", "1");
+    var user2 = getTestUser("2", "2");
+
+    var publicChannel = Channel.builder().name("c1").type(Type.PUBLIC).build();
+    var savedPublicChannel = channelRepository.save(publicChannel);
+
+    var publicThread = Thread.builder().message("message").user(user).build();
+    publicThread.setChannel(savedPublicChannel);
+    publicThread.addEmotion(user2, "emoji");
+
+    var comment = Comment.builder().message("thread comment").build();
+    comment.setUser(user);
+    var savedComment = commentRepository.save(comment);
+    publicThread.addComment(savedComment);
+    channelRepository.save(savedPublicChannel);
+
+    var list = mentionEmotionService.search(user.getId());
+
+    Assertions.assertEquals(list.size(), 1);
+    Assertions.assertEquals(list.get(0).getMessage(), publicThread.getMessage());
+  }
+
+  @Test
+  @DisplayName("전체 채널에 내가 작성한 쓰레드 그리고 댓글 중 이모지가 달려있는 쓰레드/댓글 상세정보 목록2 : 스레드 1(이모지x), 댓글 1(이모지o)이 존재할 때 댓글만 가져옵니다.")
+  void getEmojiAttachedThreadAndCommentsTest3() {
+    // given
+    var user = getTestUser("1", "1");
+    var user2 = getTestUser("2", "2");
+
+    var publicChannel = Channel.builder().name("c1").type(Type.PUBLIC).build();
+    var savedPublicChannel = channelRepository.save(publicChannel);
+
+    var publicThread = Thread.builder().message("message").user(user).build();
+    publicThread.setChannel(savedPublicChannel);
+
+    var comment = Comment.builder().message("thread comment").build();
+    comment.setUser(user);
+    comment.addEmotion(user2, "emoji");
+    var savedComment = commentRepository.save(comment);
+    publicThread.addComment(savedComment);
+    channelRepository.save(savedPublicChannel);
+
+    var list = mentionEmotionService.search(user.getId());
+
+    Assertions.assertEquals(list.size(), 1);
+    Assertions.assertEquals(list.get(0).getMessage(), savedComment.getMessage());
+  }
+
+  @Test
+  @DisplayName("전체 채널에 내가 작성한 쓰레드 그리고 댓글 중 이모지가 달려있는 쓰레드/댓글 상세정보 목록2 : 스레드 1(이모지x), 댓글 1(이모지x)이 존재할 때 아무것도 가져오지 않습니다.")
+  void getEmojiAttachedThreadAndCommentsTest4() {
+    // given
+    var user = getTestUser("1", "1");
+    var user2 = getTestUser("2", "2");
+
+    var publicChannel = Channel.builder().name("c1").type(Type.PUBLIC).build();
+    var savedPublicChannel = channelRepository.save(publicChannel);
+
+    var publicThread = Thread.builder().message("message").user(user).build();
+    publicThread.setChannel(savedPublicChannel);
+
+    var comment = Comment.builder().message("thread comment").build();
+    comment.setUser(user);
+    var savedComment = commentRepository.save(comment);
+    publicThread.addComment(savedComment);
+    channelRepository.save(savedPublicChannel);
+
+    var list = mentionEmotionService.search(user.getId());
+
+    Assertions.assertEquals(list.size(), 0);
   }
 
   private User getTestUser(String username, String password) {
@@ -128,7 +243,7 @@ class ThreadServiceImplTest {
     return threadService.insert(newThread);
   }
 
-  private Thread getTestThread(String message, Channel channel, User mentionedUser,
+  private Thread getTestThreadWithComment(String message, Channel channel, User mentionedUser,
       User emotionUser, String emotionValue, User commentUser, String commentMessage,
       User commentEmotionUser, String commentEmotionValue) {
     var newThread = getTestThread(message, channel, mentionedUser, emotionUser, emotionValue,
