@@ -60,10 +60,10 @@ public class Comment {
   private Thread thread;
 
   @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
-  Set<CommentMention> mentions = new LinkedHashSet<>();
+  private Set<CommentMention> mentions = new LinkedHashSet<>();
 
   @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
-  Set<CommentEmotion> emotions = new LinkedHashSet<>();
+  private Set<CommentEmotion> emotions = new LinkedHashSet<>();
 
   /**
    * 연관관계 편의 메소드 - 반대쪽에는 연관관계 편의 메소드가 없도록 주의합니다.

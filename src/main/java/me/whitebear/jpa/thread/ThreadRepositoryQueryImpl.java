@@ -45,7 +45,7 @@ public class ThreadRepositoryQueryImpl implements ThreadRepositoryQuery {
         .from(thread)
         .leftJoin(thread.channel).fetchJoin()
         .leftJoin(thread.emotions).fetchJoin()
-        .where(userIdEq(userId))
+        .where(userIdEq(userId), thread.emotions.any().isNotNull())
         .orderBy(thread.emotions.any().createdAt.desc())
         .fetch();
   }
